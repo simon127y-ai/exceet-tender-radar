@@ -7,63 +7,229 @@ module.exports = async function handler(req, res) {
     return res.status(200).end();
   }
   
-  // API Key (obfuscated)
-  var k1 = "c2stcHJvai1WeE5INU1Rel";
-  var k2 = "NJLW1DZmdwVnpZVEZkQ1Y0RlVVd2V4WTJxRWt4N0Jhckw2YWhXYXVpWjdRdHZwYjQ2Ymo0R2dLYWU4V3ZWdGdRVDNCbGJrRkprrk9MeGp1WDQ3emJEMVJXbGV1OVFqckJvV3BRQ3Zvd Xo5SUt";
-  var k3 = "kqaGdua mh0YmZQcldBOUFQWTViOEhZWGd5OHJGc01jQQ==";
-  function dk(a,b,c){return atob((a+b+c).replace(/[ k]/g,''));}
-  var OPENAI_KEY = dk(k1,k2,k3);
+  // Kostenlose lokale Übersetzungstabelle
+  var translations = {
+    // Französisch
+    "fourniture": "Lieferung",
+    "livraison": "Lieferung",
+    "acquisition": "Beschaffung",
+    "marché": "Auftrag",
+    "carte": "Karte",
+    "cartes": "Karten",
+    "chipkarte": "Chipkarte",
+    "puce": "Chip",
+    "puces": "Chips",
+    "support": "Träger",
+    "supports": "Träger",
+    "titre": "Ticket",
+    "titres": "Tickets",
+    "transport": "Transport",
+    "restaurant": "Restaurant",
+    "personnalisation": "Personalisierung",
+    "pré-personnalisation": "Vorpersonalisierung",
+    "impression": "Druck",
+    "fabrication": "Herstellung",
+    "production": "Produktion",
+    "services": "Dienstleistungen",
+    "associées": "zugehörige",
+    "prestations": "Leistungen",
+    "pour": "für",
+    "et": "und",
+    "de": "von",
+    "des": "der",
+    "les": "die",
+    "la": "die",
+    "le": "der",
+    "du": "des",
+    "aux": "zu den",
+    "en": "in",
+    "avec": "mit",
+    "sans": "ohne",
+    "ou": "oder",
+    "sur": "auf",
+    "par": "durch",
+    "une": "eine",
+    "un": "ein",
+    "agents": "Mitarbeiter",
+    "commune": "Gemeinde",
+    "ville": "Stadt",
+    "région": "Region",
+    "département": "Département",
+    "métropole": "Metropole",
+    "occasionnels": "Gelegenheits-",
+    "souples": "flexibel",
+    "calypso": "Calypso",
+    "billettique": "Ticketing",
+    "identification": "Identifikation",
+    "accès": "Zugang",
+    "sécurité": "Sicherheit",
+    "bancaire": "Bank-",
+    "bancaires": "Bank-",
+    "paiement": "Zahlung",
+    "crédit": "Kredit",
+    "débit": "Debit",
+    "électronique": "elektronisch",
+    "électroniques": "elektronische",
+    "système": "System",
+    "national": "national",
+    "contrat": "Vertrag",
+    "cadre": "Rahmen",
+    "accord": "Vereinbarung",
+    
+    // Polnisch
+    "dostawa": "Lieferung",
+    "karty": "Karten",
+    "kart": "Karten",
+    "karnety": "Eintrittskarten",
+    "karnetów": "Eintrittskarten",
+    "uprawniających": "berechtigende",
+    "korzystania": "Nutzung",
+    "usług": "Dienstleistungen",
+    "sportowych": "Sport-",
+    "rekreacyjnych": "Freizeit-",
+    "pracowników": "Mitarbeiter",
+    "dla": "für",
+    "do": "zu",
+    "oraz": "und",
+    "lub": "oder",
+    "na": "auf",
+    "od": "von",
+    "ze": "mit",
+    "uniwersytet": "Universität",
+    "szpital": "Krankenhaus",
+    "kliniczny": "klinisch",
+    
+    // Spanisch
+    "suministro": "Lieferung",
+    "tarjetas": "Karten",
+    "tarjeta": "Karte",
+    "servicios": "Dienstleistungen",
+    "contrato": "Vertrag",
+    "adquisición": "Beschaffung",
+    "producción": "Produktion",
+    
+    // Italienisch
+    "fornitura": "Lieferung",
+    "schede": "Karten",
+    "carta": "Karte",
+    "servizi": "Dienstleistungen",
+    "contratto": "Vertrag",
+    
+    // Rumänisch
+    "cartele": "Karten",
+    "tahografice": "Tachographen-",
+    "personalizate": "personalisierte",
+    "autoritatea": "Behörde",
+    "administrativă": "Verwaltungs-",
+    "agenția": "Agentur",
+    "națională": "nationale",
+    
+    // Englisch
+    "supply": "Lieferung",
+    "delivery": "Lieferung",
+    "cards": "Karten",
+    "card": "Karte",
+    "chip": "Chip",
+    "smart": "Smart",
+    "smartcard": "Chipkarte",
+    "access": "Zugang",
+    "payment": "Zahlung",
+    "services": "Dienstleistungen",
+    "contract": "Vertrag",
+    "framework": "Rahmen",
+    "agreement": "Vereinbarung",
+    "procurement": "Beschaffung",
+    "production": "Produktion",
+    "printing": "Druck",
+    "personalization": "Personalisierung",
+    "personalisation": "Personalisierung"
+  };
   
-  // Übersetzungsfunktion mit OpenAI
-  async function translateToGerman(text) {
-    if (!text || text.length < 5) return text;
+  // Ländernamen übersetzen
+  var countryNames = {
+    "FR": "Frankreich",
+    "DE": "Deutschland",
+    "AT": "Österreich",
+    "PL": "Polen",
+    "ES": "Spanien",
+    "IT": "Italien",
+    "NL": "Niederlande",
+    "BE": "Belgien",
+    "PT": "Portugal",
+    "CZ": "Tschechien",
+    "RO": "Rumänien",
+    "HU": "Ungarn",
+    "SK": "Slowakei",
+    "BG": "Bulgarien",
+    "HR": "Kroatien",
+    "SI": "Slowenien",
+    "LT": "Litauen",
+    "LV": "Lettland",
+    "EE": "Estland",
+    "FI": "Finnland",
+    "SE": "Schweden",
+    "DK": "Dänemark",
+    "IE": "Irland",
+    "GR": "Griechenland",
+    "CY": "Zypern",
+    "LU": "Luxemburg",
+    "MT": "Malta",
+    "MDA": "Moldau",
+    "MD": "Moldau"
+  };
+  
+  // CPV-Kategorien
+  var cpvCategories = {
+    "30162": "Chipkarten",
+    "30161": "Bankkarten",
+    "22457": "Zugangskarten"
+  };
+  
+  function translateTitle(title, country) {
+    if (!title) return "";
     
-    // Prüfe ob bereits deutsch
-    var germanWords = ["Lieferung", "Karten", "Chipkarten", "Ausschreibung", "für", "und", "der", "die", "das"];
-    var lowerText = text.toLowerCase();
-    var germanCount = 0;
-    for (var i = 0; i < germanWords.length; i++) {
-      if (lowerText.indexOf(germanWords[i].toLowerCase()) !== -1) germanCount++;
+    // Hol Ländername
+    var countryName = countryNames[country] || country;
+    
+    // Bestimme CPV-Kategorie aus Titel
+    var category = "Chipkarten";
+    var lowerTitle = title.toLowerCase();
+    if (lowerTitle.indexOf("bank") !== -1 || lowerTitle.indexOf("crédit") !== -1 || 
+        lowerTitle.indexOf("paiement") !== -1 || lowerTitle.indexOf("payment") !== -1) {
+      category = "Bankkarten";
+    } else if (lowerTitle.indexOf("accès") !== -1 || lowerTitle.indexOf("access") !== -1 ||
+               lowerTitle.indexOf("transport") !== -1 || lowerTitle.indexOf("ticket") !== -1 ||
+               lowerTitle.indexOf("titre") !== -1) {
+      category = "Zugangskarten";
+    } else if (lowerTitle.indexOf("restaurant") !== -1 || lowerTitle.indexOf("gutschein") !== -1) {
+      category = "Essensgutscheine";
+    } else if (lowerTitle.indexOf("karnet") !== -1 || lowerTitle.indexOf("eintritt") !== -1) {
+      category = "Eintrittskarten";
+    } else if (lowerTitle.indexOf("tahograf") !== -1 || lowerTitle.indexOf("tachograph") !== -1) {
+      category = "Chipkarten";
     }
-    if (germanCount >= 3) return text; // Bereits deutsch
     
-    try {
-      var response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + OPENAI_KEY
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini",
-          messages: [{
-            role: "user",
-            content: "Übersetze folgenden Ausschreibungstitel ins Deutsche. Antworte NUR mit der deutschen Übersetzung, nichts anderes:\n\n" + text
-          }],
-          temperature: 0.3,
-          max_tokens: 200
-        })
-      });
-      
-      if (response.ok) {
-        var data = await response.json();
-        return data.choices[0].message.content.trim();
-      }
-    } catch (e) {
-      console.error("Translation error:", e);
+    // Übersetze wichtige Wörter
+    var translatedTitle = title;
+    var words = Object.keys(translations);
+    for (var i = 0; i < words.length; i++) {
+      var word = words[i];
+      var regex = new RegExp("\\b" + word + "\\b", "gi");
+      translatedTitle = translatedTitle.replace(regex, translations[word]);
     }
     
-    return text; // Fallback: Original
+    // Format: "Land – Kategorie – Übersetzter Titel"
+    return countryName + " – " + category + " – " + translatedTitle;
   }
   
   // exceet Card Group - NUR KARTEN-CPV-Codes
   var cpvCodes = [
-    "30162000",  // Chipkarten
-    "30161000",  // Kreditkarten, Bankkarten
-    "22457000"   // Zugangskarten
+    "30162000",
+    "30161000",
+    "22457000"
   ];
   
-  // Datum vor 12 Monaten berechnen
+  // Datum vor 12 Monaten
   var oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
   var dateFilter = oneYearAgo.toISOString().split("T")[0].replace(/-/g, "");
@@ -95,16 +261,12 @@ module.exports = async function handler(req, res) {
       "chipkarte", "smartcard", "smart card", "chip card", "chipkarten",
       "karte", "card", "karten", "cards", "carte", "cartes", "tarjeta",
       "bankkarte", "kreditkarte", "credit card", "debit card", "bank card",
-      "zahlungskarte", "payment card", "geldkarte",
       "zutrittskarte", "access card", "zugangskarte",
       "mitarbeiterausweis", "employee card", "badge", "ausweis",
       "kundenkarte", "loyalty card", "mitgliedskarte",
       "geschenkkarte", "gift card", "gutschein", "voucher",
       "fahrkarte", "transport card", "ticket card", "ticket",
-      "gesundheitskarte", "health card", "versicherungskarte",
-      "studentenkarte", "student card", "étudiants",
-      "führerschein", "driving licence", "driver license",
-      "titre", "titres", "support", "supports"
+      "titre", "titres", "support", "supports", "cartele", "karnety"
     ];
     
     // Ausschluss
@@ -113,20 +275,18 @@ module.exports = async function handler(req, res) {
       "armband", "bracelet", "wristband",
       "software", "system", "server", "datenbank", "database",
       "drucker", "printer", "scanner",
-      "wartung", "maintenance", "reparatur", "repair", "service",
-      "beratung", "consulting", "schulung", "training", "ausbildung",
+      "wartung", "maintenance", "reparatur", "repair",
+      "beratung", "consulting", "schulung", "training",
       "möbel", "furniture", "gebäude", "building",
       "papier", "paper", "büro", "office"
     ];
     
     var tenders = [];
     
-    // Verarbeite alle Notices
     for (var idx = 0; idx < notices.length; idx++) {
       var notice = notices[idx];
       var pubNum = notice["publication-number"] || ("ted-" + idx);
       
-      // Titel - bevorzuge Deutsch
       var titleObj = notice["notice-title"] || {};
       var title = titleObj.deu || titleObj.eng || titleObj.fra || titleObj.spa || titleObj.pol || Object.values(titleObj)[0] || "";
       if (Array.isArray(title)) title = title[0];
@@ -179,12 +339,13 @@ module.exports = async function handler(req, res) {
       } else if (searchText.indexOf("zutritt") !== -1 || searchText.indexOf("access") !== -1 || 
                  searchText.indexOf("transport") !== -1 || searchText.indexOf("fahrkarte") !== -1 ||
                  searchText.indexOf("ticket") !== -1 || searchText.indexOf("accès") !== -1 ||
+                 searchText.indexOf("titre") !== -1 ||
                  cpvCode.indexOf("22457") === 0) {
         category = "Access/Transport";
       }
       
-      // Übersetze Titel auf Deutsch
-      var germanTitle = await translateToGerman(title);
+      // Übersetze Titel
+      var germanTitle = translateTitle(title, country);
       
       tenders.push({
         id: pubNum,
@@ -203,7 +364,7 @@ module.exports = async function handler(req, res) {
       });
     }
     
-    // Nach Datum sortieren (neueste zuerst)
+    // Nach Datum sortieren
     tenders.sort(function(a, b) {
       return (b.publicationDate || "").localeCompare(a.publicationDate || "");
     });
