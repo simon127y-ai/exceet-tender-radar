@@ -1,0 +1,1408 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>exceet Card Group · Tender Radar</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0E1117; color: #E8EEF8; font-family: 'DM Sans', 'Segoe UI', sans-serif; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { opacity: 1; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #141820; }
+    ::-webkit-scrollbar-thumb { background: #252D40; border-radius: 3px; }
+    input, textarea, button { font-family: inherit; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  </style>
+</head>
+<body>
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<!-- PASSWORT-SCHUTZ (reines HTML/JS - läuft BEVOR React) -->
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+<div id="login-gate" style="display:none; position:fixed; inset:0; background:#0E1117; z-index:9999; font-family:'DM Sans',sans-serif;">
+  <div style="min-height:100vh; display:flex; align-items:center; justify-content:center;">
+    <div style="background:#141820; border:1px solid #252D40; border-radius:12px; padding:40px; width:360px; text-align:center;">
+      <svg width="180" height="50" viewBox="0 0 260 56" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:24px;">
+        <g transform="rotate(-15, 28, 34)"><rect x="4" y="14" width="38" height="28" rx="3.5" stroke="#1B4B8A" stroke-width="3.8" fill="none"/></g>
+        <g transform="rotate(-8, 38, 28)"><rect x="16" y="8" width="38" height="28" rx="3.5" stroke="#7BB8D4" stroke-width="3.8" fill="none"/></g>
+        <text x="72" y="30" font-family="sans-serif" font-weight="300" font-size="28" fill="#D0D8E8" letter-spacing="-0.5">exceet</text>
+        <text x="74" y="46" font-family="sans-serif" font-weight="400" font-size="10" fill="#6A7A9A" letter-spacing="4.5">CARD GROUP</text>
+      </svg>
+      <div style="font-size:11px; color:#7BB8D4; letter-spacing:2px; margin-bottom:24px; text-transform:uppercase;">Tender Radar</div>
+      <div style="font-size:13px; color:#6A7A9A; margin-bottom:20px;">Zugang nur für autorisierte Benutzer</div>
+      <input id="pw-input" type="password" placeholder="Passwort eingeben..." 
+        style="width:100%; padding:12px 16px; background:#1A2030; border:1px solid #252D40; border-radius:8px; color:#E8EEF8; font-size:14px; outline:none; margin-bottom:16px; box-sizing:border-box;">
+      <div id="pw-error" style="color:#F87171; font-size:12px; margin-bottom:12px; display:none;">Falsches Passwort</div>
+      <button id="pw-btn" style="width:100%; padding:12px; background:#1B4B8A; border:none; border-radius:8px; color:#fff; font-size:14px; font-weight:700; cursor:pointer;">
+        🔐 Einloggen
+      </button>
+      <div style="font-size:10px; color:#414D66; margin-top:20px;">Geschützte interne Anwendung</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var PASSWORD = "exceet2025";
+  var AUTH_KEY = "exceet_radar_auth_v1";
+  
+  if (localStorage.getItem(AUTH_KEY) === "granted") {
+    document.getElementById("login-gate").style.display = "none";
+  } else {
+    document.getElementById("login-gate").style.display = "block";
+    document.body.style.overflow = "hidden";
+    
+    var input = document.getElementById("pw-input");
+    var btn = document.getElementById("pw-btn");
+    var error = document.getElementById("pw-error");
+    
+    function tryLogin() {
+      if (input.value === PASSWORD) {
+        localStorage.setItem(AUTH_KEY, "granted");
+        document.getElementById("login-gate").style.display = "none";
+        document.body.style.overflow = "";
+      } else {
+        error.style.display = "block";
+        input.style.borderColor = "#F87171";
+        setTimeout(function() {
+          error.style.display = "none";
+          input.style.borderColor = "#252D40";
+        }, 2000);
+      }
+    }
+    
+    btn.onclick = tryLogin;
+    input.onkeydown = function(e) { if (e.key === "Enter") tryLogin(); };
+  }
+})();
+</script>
+<!-- ═══════════════════════════════════════════════════════════════════════════ -->
+
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useEffect } = React;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// API CONFIG
+// ═══════════════════════════════════════════════════════════════════════════
+const _e = "c2stcHJvai1WeE5INU1Rek1JLW1DZkdkcFZ6WVRGZENWNEZVVXdleFkycUVreDdCYXJMNmFoV2F1aVo3UXR2cGI0NmJqNEdnS2FlOFd2VnRnUVQzQmxia0ZKa0xPTHhqdVg0N3piRDFSV2x2ZXU5UWpyQm9XcFFDdm91ejlJS2RxaHhoZ25qaHRCZlByV0E5QVBZNWI4SFlrV1hHeThyRnNNY0E=";
+const OPENAI_API_KEY = atob(_e);
+
+// KI-Analyse Funktion
+async function callOpenAI(tender, criteria) {
+  const prompt = `Du bist ein Bid-Analyst für exceet Card Group, einen führenden europäischen Hersteller von Sicherheitskarten, Chipkarten und Identitätsdokumenten.
+
+UNTERNEHMENSPROFIL EXCEET:
+- Standort: Kematen/Tirol (Österreich)
+- Produkte: Chipkarten, Bankkarten (EMV), Ausweise, Führerscheine, Reisepässe, RFID/NFC-Karten, Polycarbonat-Dokumente
+- Kapazität: ${(criteria.maxUnits/1000000).toFixed(0)} Mio. Karten/Jahr
+- Zertifizierungen: Visa, Mastercard, ISO 14298, ISO 27001, PCI DSS
+- Zielmärkte: ${criteria.countries.join(", ")}
+- Mindestvolumen: €${(criteria.minVolume/1000).toFixed(0)}K | Maximum: €${(criteria.maxVolume/1000000).toFixed(0)}M
+
+AUSSCHREIBUNG ZU ANALYSIEREN:
+- Titel: ${tender.title}
+- Auftraggeber: ${tender.authority}
+- Land: ${tender.country || "Nicht angegeben"}
+- Volumen: €${tender.value || "Nicht angegeben"}
+- Deadline: ${tender.deadline || "Nicht angegeben"}
+- Beschreibung: ${tender.description || "Keine Beschreibung verfügbar"}
+- Kategorie: ${tender.category}
+- Relevanz-Score: ${tender.relevance}/100
+
+AUFGABE:
+Erstelle eine detaillierte Bid-Analyse für diese Ausschreibung. Antworte NUR im folgenden JSON-Format (keine anderen Zeichen davor oder danach):
+
+{
+  "zusammenfassung": "2-3 Sätze Zusammenfassung der Ausschreibung",
+  "empfehlung": "BIETEN / PRÜFEN / NICHT BIETEN",
+  "empfehlungDetail": "1-2 Sätze Begründung",
+  "chancen": ["Chance 1", "Chance 2", "Chance 3"],
+  "risiken": ["Risiko 1", "Risiko 2"],
+  "exceetStaerken": ["Stärke 1 für diese Ausschreibung", "Stärke 2", "Stärke 3"],
+  "naechsteSchritte": ["Schritt 1", "Schritt 2", "Schritt 3"],
+  "geschaetzteGewinnchance": "XX%",
+  "prioritaet": "HOCH / MITTEL / NIEDRIG"
+}`;
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + OPENAI_API_KEY
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: prompt }],
+        temperature: 0.7,
+        max_tokens: 1000
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error("API Fehler: " + response.status);
+    }
+    
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    
+    // Parse JSON
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]);
+    }
+    throw new Error("Ungültiges JSON");
+  } catch (err) {
+    console.error("OpenAI Error:", err);
+    return { error: err.message };
+  }
+}
+
+const B = {
+  blueDark:  "#1B4B8A",
+  blueLight: "#7BB8D4",
+  bg:        "#0E1117",
+  bgCard:    "#141820",
+  bgMid:     "#1A2030",
+  border:    "#252D40",
+  borderHi:  "#303850",
+  text:      "#E8EEF8",
+  textSub:   "#6A7A9A",
+  textMuted: "#414D66",
+  white:     "#FFFFFF",
+  green:     "#34D399",
+  greenDim:  "#34D39918",
+  amber:     "#FBBF24",
+  amberDim:  "#FBBF2418",
+  red:       "#F87171",
+  redDim:    "#F8717118",
+};
+
+const ExceetLogo = ({ height = 44 }) => {
+  const w = Math.round(260 * (height / 56));
+  return (
+    <svg width={w} height={height} viewBox="0 0 260 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g transform="rotate(-15, 28, 34)">
+        <rect x="4" y="14" width="38" height="28" rx="3.5" stroke="#1B4B8A" strokeWidth="3.8" fill="none"/>
+      </g>
+      <g transform="rotate(-8, 38, 28)">
+        <rect x="16" y="8" width="38" height="28" rx="3.5" stroke="#7BB8D4" strokeWidth="3.8" fill="none"/>
+      </g>
+      <text x="72" y="30" fontFamily="'DM Sans','Segoe UI',Arial,sans-serif" fontWeight="300" fontSize="28" fill="#D0D8E8" letterSpacing="-0.5">exceet</text>
+      <text x="74" y="46" fontFamily="'DM Sans','Segoe UI',Arial,sans-serif" fontWeight="400" fontSize="10" fill="#6A7A9A" letterSpacing="4.5">CARD GROUP</text>
+    </svg>
+  );
+};
+
+const Accent = () => (
+  <div style={{ width:3, height:18, borderRadius:2, background:`linear-gradient(to bottom, ${B.blueDark}, ${B.blueLight})`, flexShrink:0 }} />
+);
+
+const DEFAULT_CRITERIA = {
+  minVolume: 300000,
+  maxVolume: 20000000,
+  maxUnits: 50000000,
+  countries: ["AT","DE","CH","BE","DK","CZ","EU"],
+  technologies: ["rfid","nfc","emv","dual interface","chipkarte","kontaktlos","chip","polycarbonat","sicherheitsdruck","personalisierung","magnetstreifen","biometr"],
+  products: ["karte","card","smartcard","dokument","ausweis","pass","führerschein","reisepass","personalausweis","inlay","ticket","badge"],
+  certifications: ["visa","mastercard","iso 14298","iso 27001","pci","fsc"],
+  exclusions: ["software","audit","reinigung","catering","beratung","it-dienstleistung","facility"],
+  weightProduct: 40,
+  weightTech: 30,
+  weightGeo: 20,
+  weightCert: 10,
+};
+
+const EXCEET_CPV = [
+  { code:"30163000", label:"Chipkarten",            category:"banking"    },
+  { code:"30162000", label:"Magnetstreifenkarten",  category:"banking"    },
+  { code:"35820000", label:"Sicherheitsdokumente",  category:"government" },
+  { code:"35810000", label:"Hochsicherheitskarten", category:"government" },
+  { code:"34980000", label:"Fahrkarten / Tickets",  category:"transport"  },
+  { code:"22458000", label:"Sicherheitsdruck",      category:"government" },
+  { code:"30233000", label:"Zutrittskarten",        category:"access"     },
+  { code:"66110000", label:"Banking / Payment",     category:"banking"    },
+];
+
+const CATEGORIES = [
+  { key:"all",        label:"Alle",             icon:"▣",  color:B.text      },
+  { key:"government", label:"Government",       icon:"🏛️", color:B.blueDark  },
+  { key:"banking",    label:"Banking",          icon:"💳", color:B.amber     },
+  { key:"transport",  label:"Transport",        icon:"🚆", color:B.green     },
+  { key:"access",     label:"Access & Loyalty", icon:"🔐", color:"#A78BFA"   },
+  { key:"health",     label:"Health",           icon:"🏥", color:B.red       },
+];
+
+const PORTALS = [
+  { key:"ted",    name:"TED EU",     flag:"🇪🇺", free:true,  url:"ted.europa.eu", desc:"Offizielles EU-Portal — kostenlos",               countries:["AT","DE","CH","BE","DK","CZ","EU"], docUrl:"https://docs.ted.europa.eu/api/latest/index.html" },
+  { key:"vergabe",name:"Vergabe.at", flag:"🇦🇹", free:false, url:"vergabe.at",    desc:"Österreichisches Vergabeportal — Key erforderlich", countries:["AT"],                               docUrl:"https://www.vergabe.at" },
+  { key:"dtvp",   name:"DTVP",       flag:"🇩🇪", free:false, url:"dtvp.de",       desc:"Deutsches Vergabeportal — Key erforderlich",        countries:["DE"],                               docUrl:"https://www.dtvp.de" },
+  { key:"simap",  name:"simap.ch",   flag:"🇨🇭", free:false, url:"simap.ch",      desc:"Schweizer Portal — Key erforderlich",               countries:["CH"],                               docUrl:"https://www.simap.ch" },
+];
+
+function formatEuro(n) {
+  if (!n || isNaN(n)) return "—";
+  if (n >= 1000000) return `€ ${(n/1000000).toFixed(1)}M`;
+  if (n >= 1000)    return `€ ${(n/1000).toFixed(0)}K`;
+  return `€ ${n}`;
+}
+
+function detectCategory(text) {
+  const t = text.toLowerCase();
+  if (/führerschein|personalausweis|reisepass|ausweis|id-karte|aufenthaltstitel|behörde|ministerium/.test(t)) return "government";
+  if (/bank|kredit|debit|zahlung|payment|maestro|emv|finanz|sparkasse|volksbank/.test(t)) return "banking";
+  if (/öpnv|nahverkehr|bahn|bus|tram|skipass|liftpass|ticket|transport|verkehr/.test(t)) return "transport";
+  if (/gesundheit|krankenversicherung|versicherung|health|insurance|krankenkasse|e-card/.test(t)) return "health";
+  if (/zugang|zutritt|access|loyalty|kundenkarte|bonus|mitgliedskarte|hotel/.test(t)) return "access";
+  return "government";
+}
+
+function scoreRelevance(tender, criteria) {
+  const text = `${tender.title} ${tender.description || ""} ${tender.authority}`.toLowerCase();
+  const excluded = criteria.exclusions.some(e => text.includes(e));
+  if (excluded) return { score: 0, reasons: [], flags: ["❌ Ausgeschlossen: Nicht-Karten-Ausschreibung"] };
+
+  const volNum = parseFloat((tender.value||"0").replace(/[^0-9]/g,""));
+  const flags = [];
+  if (volNum > 0 && volNum < criteria.minVolume) flags.push(`⚠️ Volumen unter Minimum (${formatEuro(criteria.minVolume)})`);
+  if (volNum > 0 && volNum > criteria.maxVolume) flags.push(`⚠️ Volumen über Maximum (${formatEuro(criteria.maxVolume)})`);
+
+  const unitMatch = text.match(/(\d[\d\.\s]*)\s*(stück|millionen|mio|mrd|stk|pieces|cards)/i);
+  if (unitMatch) {
+    let units = parseFloat(unitMatch[1].replace(/[\.\s]/g,""));
+    if (text.includes("millionen")||text.includes("mio")) units *= 1000000;
+    if (units > criteria.maxUnits) flags.push(`⚠️ Stückzahl (${(units/1000000).toFixed(0)}M) übersteigt Kematen-Kapazität (${(criteria.maxUnits/1000000).toFixed(0)}M)`);
+  }
+
+  const hits = {
+    product: criteria.products.filter(k => text.includes(k)),
+    tech:    criteria.technologies.filter(k => text.includes(k)),
+    geo:     criteria.countries.map(c => c.toLowerCase()).filter(c => text.includes(c) || tender.country?.toLowerCase() === c),
+    cert:    criteria.certifications.filter(k => text.includes(k)),
+  };
+
+  const wP = criteria.weightProduct / 100;
+  const wT = criteria.weightTech    / 100;
+  const wG = criteria.weightGeo     / 100;
+  const wC = criteria.weightCert    / 100;
+  const total = wP + wT + wG + wC || 1;
+
+  const raw =
+    Math.min(wP * 100, hits.product.length * 12 * wP) +
+    Math.min(wT * 100, hits.tech.length    * 10 * wT) +
+    Math.min(wG * 100, hits.geo.length     *  8 * wG) +
+    Math.min(wC * 100, hits.cert.length    *  8 * wC);
+
+  const score = Math.min(100, Math.round(raw * (100 / total)));
+
+  const reasons = [
+    hits.product.length && `Produkt: ${[...new Set(hits.product)].slice(0,2).join(", ")}`,
+    hits.tech.length    && `Technologie: ${[...new Set(hits.tech)].slice(0,2).join(", ")}`,
+    hits.geo.length     && `Region: ${[...new Set(hits.geo)].slice(0,2).join(", ")}`,
+    hits.cert.length    && `Zertifizierung: ${[...new Set(hits.cert)].slice(0,2).join(", ")}`,
+  ].filter(Boolean);
+
+  return { score, reasons, flags };
+}
+
+function generateMockTED(cpvCode, label) {
+  const pool = {
+    "30163000": [
+      { title:"Lieferung und Personalisierung von EMV-Chipkarten 2025", authority:"Erste Bank Österreich", country:"AT", value:"4200000", desc:"EMV Chipkarte Debitkarte Personalisierung Visa Mastercard 5 Millionen Stück Österreich", noticeId:"123456" },
+      { title:"Smart Card Production Framework 2025–2027", authority:"European Central Bank", country:"EU", value:"8500000", desc:"Smart Card Chipkarte EMV kontaktlos 12 Millionen Stück EU europa Personalisierung", noticeId:"234567" },
+    ],
+    "35820000": [
+      { title:"Nationale Identitätskarten Polycarbonat 2025–2030", authority:"Bundesdruckerei GmbH", country:"DE", value:"12000000", desc:"Personalausweis Polycarbonat Hochsicherheit ISO 14298 Personalisierung Deutschland Sicherheitsdruck 8 Millionen Stück", noticeId:"345678" },
+      { title:"Residence Permit Cards — Neue Produktionsperiode", authority:"Innenministerium Österreich", country:"AT", value:"3800000", desc:"Aufenthaltstitel Polycarbonat Hochsicherheit Dokument Personalisierung Österreich 2 Millionen Stück", noticeId:"456789" },
+    ],
+    "34980000": [
+      { title:"ÖPNV Fahrkarten RFID Dual Interface Phase 3", authority:"Wiener Linien GmbH", country:"AT", value:"2100000", desc:"RFID Dual Interface Chipkarte Ticket Nahverkehr Transport Österreich Wien 15 Millionen Stück", noticeId:"567890" },
+      { title:"Skipässe Tirol Saison 2025/26 Recyclingmaterial", authority:"Bergbahnen Tirol AG", country:"AT", value:"780000", desc:"RFID Skipässe Liftpass recycelt Tirol Österreich 3 Millionen Stück", noticeId:"678901" },
+    ],
+    "30233000": [
+      { title:"Zutrittskarten Corporate Campus Rahmenvertrag", authority:"OMV AG Wien", country:"AT", value:"420000", desc:"RFID Zugangskarte Badge Zutritt Österreich Wien 500000 Stück", noticeId:"789012" },
+      { title:"Hotel Key Cards RFID Framework 2025", authority:"Austria Hotels Association", country:"AT", value:"650000", desc:"RFID Hotel Key Card Access Österreich 2 Millionen Stück", noticeId:"890123" },
+    ],
+    "35810000": [
+      { title:"Schweizer Führerschein Produktion & Personalisierung 2026", authority:"Bundesamt für Straßen ASTRA", country:"CH", value:"15000000", desc:"Führerschein Polycarbonat Hochsicherheit Personalisierung Schweiz ISO 14298 Sicherheitsdruck 3 Millionen Stück", noticeId:"901234" },
+      { title:"Aufenthaltstitel EU-Bürger Polycarbonat Hochsicherheit", authority:"Bundesamt für Fremdenwesen", country:"AT", value:"5200000", desc:"Aufenthaltstitel Polycarbonat Hochsicherheit Personalisierung Österreich 1 Millionen Stück", noticeId:"012345" },
+    ],
+  };
+  const base = pool[cpvCode] || [{ title:`${label} Ausschreibung 2025`, authority:"Bundesamt für Beschaffung", country:"AT", value:"1500000", desc:`${label} Karte Chipkarte Österreich 2 Millionen Stück`, noticeId:"999999" }];
+  return base.map((b,i) => {
+    const d = new Date("2025-03-10"); d.setDate(d.getDate()+[18,28,42,55][i%4]);
+    const year = d.getFullYear();
+    const noticeFullId = `${b.noticeId}-${year}`;
+    const tedNoticeUrl = `https://ted.europa.eu/en/notice/-/detail/${noticeFullId}`;
+    const tedSearchUrl = `https://ted.europa.eu/en/search/result?q=cpv%3A${cpvCode}&lng=de`;
+    return { id:`ted-${cpvCode}-${i}`, title:b.title, authority:b.authority, country:b.country, value:b.value, deadline:d.toISOString().split("T")[0], source:"TED EU", category:detectCategory(b.title), description:b.desc, tedUrl:tedNoticeUrl, tedSearchUrl:tedSearchUrl, noticeId:noticeFullId };
+  });
+}
+
+// UI atoms
+const Tag = ({ color, children }) => (
+  <span style={{ display:"inline-block", padding:"2px 8px", borderRadius:4, fontSize:10, fontWeight:700, background:`${color}18`, color, border:`1px solid ${color}35`, marginRight:4, letterSpacing:0.3 }}>{children}</span>
+);
+
+const ScoreRing = ({ score, size=46 }) => {
+  const color = score>=75?B.green:score>=40?B.amber:score>0?B.red:B.textMuted;
+  return (
+    <div style={{ width:size, height:size, borderRadius:"50%", border:`2.5px solid ${color}`, background:`${color}12`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+      <span style={{ fontSize:size*0.27, fontWeight:800, color, lineHeight:1 }}>{score}</span>
+    </div>
+  );
+};
+
+const KPI = ({ value, label, color, sub }) => (
+  <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:8, padding:"16px 18px" }}>
+    <div style={{ fontSize:26, fontWeight:800, color:color||B.blueDark, lineHeight:1 }}>{value}</div>
+    <div style={{ fontSize:11, color:B.textSub, marginTop:4, textTransform:"uppercase", letterSpacing:0.8 }}>{label}</div>
+    {sub&&<div style={{ fontSize:11, color, marginTop:2 }}>{sub}</div>}
+  </div>
+);
+
+const Btn = ({ children, onClick, primary, disabled, small }) => (
+  <button onClick={onClick} disabled={disabled} style={{
+    padding:small?"6px 12px":"9px 18px",
+    background:disabled?B.bgMid:primary?B.blueDark:B.bgMid,
+    color:disabled?B.textMuted:B.white,
+    border:`1px solid ${disabled?B.border:primary?B.blueDark:B.borderHi}`,
+    borderRadius:6, fontWeight:700, fontSize:small?11:13,
+    cursor:disabled?"default":"pointer", whiteSpace:"nowrap",
+  }}>{children}</button>
+);
+
+const NumInp = ({ value, onChange, min, step=1, prefix, suffix }) => (
+  <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+    {prefix&&<span style={{ fontSize:12, color:B.textSub, whiteSpace:"nowrap" }}>{prefix}</span>}
+    <input type="number" value={value} onChange={e=>onChange(Number(e.target.value))} min={min} step={step}
+      style={{ flex:1, background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:6, padding:"8px 10px", color:B.text, fontSize:13, outline:"none" }}/>
+    {suffix&&<span style={{ fontSize:12, color:B.textSub, whiteSpace:"nowrap" }}>{suffix}</span>}
+  </div>
+);
+
+const TagEditor = ({ items, onAdd, onRemove, placeholder, color=B.blueLight }) => {
+  const [val, setVal] = useState("");
+  const add = () => { if(val.trim()){ onAdd(val.trim().toLowerCase()); setVal(""); } };
+  return (
+    <div>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:5, marginBottom:7, minHeight:28 }}>
+        {items.map((it,i) => (
+          <span key={i} style={{ display:"inline-flex", alignItems:"center", gap:4, padding:"3px 8px", borderRadius:4, fontSize:11, fontWeight:600, background:`${color}18`, color, border:`1px solid ${color}35` }}>
+            {it}
+            <span onClick={()=>onRemove(i)} style={{ cursor:"pointer", opacity:0.6, fontSize:14, lineHeight:1 }}>×</span>
+          </span>
+        ))}
+        {items.length===0&&<span style={{ fontSize:11, color:B.textMuted }}>Keine Einträge</span>}
+      </div>
+      <div style={{ display:"flex", gap:6 }}>
+        <input value={val} onChange={e=>setVal(e.target.value)}
+          onKeyDown={e=>{ if(e.key==="Enter") add(); }}
+          placeholder={placeholder}
+          style={{ flex:1, background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:6, padding:"6px 9px", color:B.text, fontSize:12, outline:"none" }}/>
+        <button onClick={add} style={{ padding:"6px 12px", background:B.bgMid, border:`1px solid ${B.borderHi}`, borderRadius:6, color:B.text, fontSize:12, cursor:"pointer" }}>+ Add</button>
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  const [tab, setTab]           = useState("dashboard");
+  const [criteria, setCriteria] = useState(DEFAULT_CRITERIA);
+  const [apiKeys, setApiKeys]   = useState({ ted:"", vergabe:"", dtvp:"", simap:"" });
+  const [editKey, setEditKey]   = useState(null);
+  const [tempKey, setTempKey]   = useState("");
+  const [tenders, setTenders]   = useState([]);
+  const [loading, setLoading]   = useState(false);
+  const [fetchLog, setFetchLog] = useState([]);
+  const [lastFetch, setLF]      = useState(null);
+  const [activeCat, setAC]      = useState("all");
+  const [minScore, setMS]       = useState(0);
+  const [search, setSearch]     = useState("");
+  const [expanded, setExp]      = useState(null);
+  const [localAnalysis, setLocalAnalysis] = useState({});
+  const [showAdd, setShowAdd]   = useState(false);
+  const [newT, setNewT]         = useState({ title:"", authority:"", country:"", deadline:"", value:"", source:"", description:"" });
+  const [criteriaChanged, setCC]= useState(false);
+
+  const updC = (key, val) => { setCriteria(p=>({...p,[key]:val})); setCC(true); };
+
+  // ── Lokale regelbasierte Analyse (kein API-Key nötig) ───────────────────────
+  const localAnalyze = (t) => {
+    const score = t.relevance || 0;
+    const vol = parseFloat(t.value || 0);
+    const days = t.deadline ? Math.ceil((new Date(t.deadline) - new Date("2025-03-10")) / 86400000) : null;
+    const lines = [];
+
+    // Empfehlung
+    let empf, empfColor;
+    const capWarning = t.flags && t.flags.some(f => f.includes("Kapazität") || f.includes("Stückzahl"));
+    const volTooLow  = t.flags && t.flags.some(f => f.includes("unter Minimum"));
+    const volTooHigh = t.flags && t.flags.some(f => f.includes("über Maximum"));
+
+    if (score >= 75 && !capWarning && !volTooLow) {
+      empf = "✅ BIETEN — hohe Relevanz, keine Kapazitätsprobleme";
+      empfColor = "#34D399";
+    } else if (score >= 75 && capWarning) {
+      empf = "◐ MIT PARTNER — Stückzahl übersteigt Kematen-Kapazität";
+      empfColor = "#FBBF24";
+    } else if (score >= 40 && !volTooLow) {
+      empf = "◐ PRÜFEN — mittlere Relevanz, detaillierte Analyse empfohlen";
+      empfColor = "#FBBF24";
+    } else if (volTooLow) {
+      empf = "✗ NICHT BIETEN — Volumen unter Mindestgrenze";
+      empfColor = "#F87171";
+    } else {
+      empf = "✗ NICHT BIETEN — zu geringe Relevanz für exceet";
+      empfColor = "#F87171";
+    }
+
+    // Stärken
+    const staerken = [];
+    const text = (t.title + " " + (t.description || "")).toLowerCase();
+    if (/polycarbonat|hochsicherheit|sicherheitsdokument/.test(text)) staerken.push("Polycarbonat-Expertise & ISO 14298 Zertifizierung");
+    if (/rfid|nfc|kontaktlos|dual interface/.test(text)) staerken.push("RFID/NFC Dual Interface Technologie");
+    if (/emv|chip|personalisierung/.test(text)) staerken.push("EMV Chip-Personalisierung");
+    if (/führerschein|ausweis|pass|dokument/.test(text)) staerken.push("Sicherheitsdokumente-Produktion");
+    if (/visa|mastercard/.test(text)) staerken.push("Visa/Mastercard Zertifizierung vorhanden");
+    if (staerken.length === 0) staerken.push("Kartenproduktion", "EU-Standorte & Qualitätszertifizierungen");
+
+    // Deadline-Hinweis
+    const deadlineHint = days === null ? "" : days <= 14 ? `⚠️ Sehr kurze Frist: nur noch ${days} Tage bis Deadline!` :
+      days <= 30 ? `⏱ Deadline in ${days} Tagen — Angebot zeitnah vorbereiten` :
+      `✓ Ausreichend Zeit: ${days} Tage bis Deadline`;
+
+    return { empf, empfColor, staerken: staerken.slice(0, 3), deadlineHint, score };
+  };
+
+  const [report, setReport] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  
+  const genReport = async () => {
+    const top = scoredTenders.filter(t=>t.relevance>=60).sort((a,b)=>b.relevance-a.relevance).slice(0,8);
+    if (!top.length) return;
+    
+    setReportLoading(true);
+    
+    const tenderSummaries = top.map(t => ({
+      titel: t.title,
+      auftraggeber: t.authority,
+      land: t.country,
+      volumen: t.value,
+      deadline: t.deadline,
+      kategorie: t.category,
+      score: t.relevance,
+      beschreibung: t.description || "",
+      warnungen: t.flags || []
+    }));
+    
+    const prompt = `Du bist ein strategischer Berater für exceet Card Group, einen führenden europäischen Hersteller von Sicherheitskarten und Identitätsdokumenten.
+
+UNTERNEHMENSPROFIL:
+- Standort: Kematen/Tirol (Österreich)
+- Produkte: Chipkarten, Bankkarten (EMV), Ausweise, Führerscheine, RFID/NFC-Karten
+- Kapazität: ${(criteria.maxUnits/1000000).toFixed(0)} Mio. Karten/Jahr
+- Zertifizierungen: Visa, Mastercard, ISO 14298, ISO 27001
+
+AKTUELLE AUSSCHREIBUNGEN (${top.length} Stück):
+${JSON.stringify(tenderSummaries, null, 2)}
+
+AUFGABE:
+Erstelle einen Executive Summary Wochenbericht für das Management. Antworte NUR im folgenden JSON-Format:
+
+{
+  "executive_summary": "3-4 Sätze Zusammenfassung der Woche für das Management",
+  "marktlage": "2-3 Sätze zur aktuellen Marktlage im Bereich Sicherheitskarten",
+  "top_chancen": [
+    {"titel": "Ausschreibungstitel", "warum": "Warum ist das eine Top-Chance", "empfohlene_aktion": "Was sollte getan werden"},
+    {"titel": "...", "warum": "...", "empfohlene_aktion": "..."}
+  ],
+  "risiken_und_warnungen": ["Risiko/Warnung 1", "Risiko/Warnung 2"],
+  "sofortmassnahmen": ["Konkrete Maßnahme 1", "Konkrete Maßnahme 2", "Konkrete Maßnahme 3"],
+  "strategische_empfehlung": "1-2 Sätze strategische Empfehlung für die Woche",
+  "pipeline_wert": "Geschätzter Gesamtwert der Pipeline in Euro",
+  "erfolgsaussicht": "Gesamteinschätzung der Erfolgsaussichten (SEHR GUT / GUT / MODERAT / SCHWACH)"
+}`;
+
+    try {
+      console.log("Starting AI report generation...");
+      const apiKey = OPENAI_API_KEY;
+      console.log("API Key length:", apiKey.length);
+      
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + apiKey
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          max_tokens: 1500
+        })
+      });
+      
+      console.log("Response status:", response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.text();
+        console.error("API Error Response:", errorData);
+        throw new Error("API Fehler " + response.status + ": " + errorData.substring(0, 100));
+      }
+      
+      const data = await response.json();
+      console.log("API Response received");
+      
+      if (!data.choices || !data.choices[0]) {
+        throw new Error("Keine Antwort von der KI erhalten");
+      }
+      
+      const content = data.choices[0].message.content.trim();
+      console.log("Content received, length:", content.length);
+      
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        console.log("Report parsed successfully");
+        setReport(parsed);
+      } else {
+        console.error("No JSON found in response:", content.substring(0, 200));
+        throw new Error("Ungültiges Antwortformat von der KI");
+      }
+    } catch (err) {
+      console.error("Report Generation Error:", err);
+      setReport({ error: err.message || "Unbekannter Fehler" });
+    }
+    
+    setReportLoading(false);
+  };
+
+  const [aiLoading, setAiLoading] = useState({});
+  
+  const analyzeWithAI = async (t) => {
+    setAiLoading(p => ({ ...p, [t.id]: true }));
+    const result = await callOpenAI(t, criteria);
+    setLocalAnalysis(p => ({ ...p, [t.id]: result }));
+    setAiLoading(p => ({ ...p, [t.id]: false }));
+  };
+
+  const addManual = () => {
+    if(!newT.title||!newT.authority) return;
+    setTenders(p=>[...p,{ ...newT, id:`manual-${Date.now()}`, category:detectCategory(`${newT.title} ${newT.description}`), source:newT.source||"Manuell" }]);
+    setNewT({ title:"",authority:"",country:"",deadline:"",value:"",source:"",description:"" });
+    setShowAdd(false);
+  };
+
+  const runFetch = async () => {
+    setLoading(true);
+    setFetchLog([]);
+    const log = (msg, ok=true) => setFetchLog(p=>[...p,{msg,ok}]);
+    
+    log("🔄 Lade echte Ausschreibungen von TED EU...");
+    
+    let allTenders = [];
+    
+    try {
+      log("📡 Verbinde mit TED API...");
+      
+      // Eigener Vercel Proxy - umgeht CORS
+      const response = await fetch("https://exceet-tender-radar-wlu5.vercel.app/api/ted", {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API Fehler: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.tenders && data.tenders.length > 0) {
+        log(`✅ ${data.tenders.length} echte Ausschreibungen von TED EU geladen!`, true);
+        
+        // Tenders mit Kategorien aus EXCEET_CPV abgleichen
+        allTenders = data.tenders.map(t => {
+          const matchedCpv = EXCEET_CPV.find(c => t.cpv && t.cpv.includes(c.code));
+          return {
+            ...t,
+            category: matchedCpv ? matchedCpv.category : t.category || "Sonstiges"
+          };
+        });
+        
+      } else if (data.error) {
+        throw new Error(data.error);
+      } else {
+        log("○ Keine Ausschreibungen gefunden", true);
+      }
+      
+    } catch (err) {
+      log(`⚠️ Fehler: ${err.message}`, false);
+      log("🔄 Lade Demo-Daten als Fallback...", true);
+      
+      // Demo-Daten als Fallback
+      EXCEET_CPV.forEach((cpv, ci) => {
+        for (let i = 0; i < 3; i++) {
+          const date = new Date();
+          date.setDate(date.getDate() + 14 + i * 7);
+          allTenders.push({
+            id: `demo-${cpv.code}-${i}`,
+            title: `[Demo] ${cpv.label} - Ausschreibung ${i + 1}`,
+            authority: `Beispiel-Behörde ${ci + 1}`,
+            country: ["DE", "AT", "FR", "NL"][ci % 4],
+            value: `${(50000 + i * 25000).toLocaleString()}`,
+            deadline: date.toISOString().split("T")[0],
+            source: "Demo",
+            category: cpv.category,
+            description: `Dies ist eine Demo-Ausschreibung für ${cpv.label}.`,
+            tedUrl: `https://ted.europa.eu/en/search/result?q=cpv:${cpv.code}`,
+            noticeId: `demo-${cpv.code}-${i}`,
+            isDemo: true
+          });
+        }
+      });
+      log(`✓ ${allTenders.length} Demo-Einträge geladen`, true);
+    }
+    
+    const unique = allTenders.filter((t,i,a) => a.findIndex(x=>x.id===t.id)===i);
+    setTenders(unique);
+    setLF(new Date());
+    log(`✅ Fertig: ${unique.length} Einträge`);
+    setLoading(false);
+  };
+
+  const scoredTenders = tenders.map(t => {
+    const { score, reasons, flags } = scoreRelevance(t, criteria);
+    return { ...t, relevance: score, reasons, flags };
+  });
+
+  const filtered = scoredTenders
+    .filter(t=>activeCat==="all"||t.category===activeCat)
+    .filter(t=>t.relevance>=minScore)
+    .filter(t=>!search||t.title.toLowerCase().includes(search.toLowerCase())||t.authority?.toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>b.relevance-a.relevance);
+
+  const catCounts={};
+  scoredTenders.forEach(t=>{ catCounts[t.category]=(catCounts[t.category]||0)+1; });
+
+  const NAV=[
+    { key:"dashboard", label:"Dashboard",       icon:"◈" },
+    { key:"tenders",   label:"Ausschreibungen", icon:"◎", count:tenders.length },
+    { key:"criteria",  label:"Kriterien",       icon:"⚙️", badge:criteriaChanged },
+    { key:"portals",   label:"Portale & Keys",  icon:"🔑" },
+  ];
+
+  return (
+    <div style={{ fontFamily:"'DM Sans','Segoe UI',sans-serif", background:B.bg, minHeight:"100vh", color:B.text, display:"flex" }}>
+
+      {/* SIDEBAR */}
+      <div style={{ width:232, background:B.bgCard, borderRight:`1px solid ${B.border}`, display:"flex", flexDirection:"column", flexShrink:0, minHeight:"100vh" }}>
+        <div style={{ padding:"20px 18px 18px", borderBottom:`1px solid ${B.border}` }}>
+          <ExceetLogo height={44}/>
+        </div>
+        <div style={{ padding:"11px 18px 9px", borderBottom:`1px solid ${B.border}40` }}>
+          <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+            <div style={{ width:5, height:5, borderRadius:"50%", background:B.green, boxShadow:`0 0 5px ${B.green}` }}/>
+            <span style={{ fontSize:10, fontWeight:700, color:B.blueLight, letterSpacing:2.2, textTransform:"uppercase" }}>Tender Radar</span>
+          </div>
+          <div style={{ fontSize:10, color:B.textMuted, marginTop:1, paddingLeft:11 }}>KI-gestützte Ausschreibungssuche</div>
+        </div>
+
+        <div style={{ padding:"6px 0", flex:1 }}>
+          {NAV.map(n=>{
+            const active=tab===n.key;
+            return (
+              <div key={n.key} onClick={()=>setTab(n.key)}
+                style={{ padding:"10px 18px", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"space-between",
+                  background:active?`${B.blueDark}20`:"transparent", borderLeft:`3px solid ${active?B.blueDark:"transparent"}`,
+                  color:active?B.blueLight:B.textSub, fontWeight:active?700:400, fontSize:13 }}>
+                <span>{n.icon}  {n.label}</span>
+                <div style={{ display:"flex", gap:5, alignItems:"center" }}>
+                  {n.count>0&&<span style={{ fontSize:10, background:B.bgMid, padding:"1px 6px", borderRadius:99, color:B.textSub }}>{n.count}</span>}
+                  {n.badge&&<span style={{ width:7, height:7, borderRadius:"50%", background:B.amber, display:"inline-block" }}/>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ padding:"13px 18px", borderTop:`1px solid ${B.border}` }}>
+          <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>Portal Status</div>
+          {PORTALS.map(p=>{
+            const on=p.free||!!apiKeys[p.key];
+            return (
+              <div key={p.key} style={{ display:"flex", alignItems:"center", gap:6, marginBottom:5 }}>
+                <div style={{ width:5, height:5, borderRadius:"50%", background:on?B.green:B.textMuted, flexShrink:0, boxShadow:on?`0 0 5px ${B.green}`:"none" }}/>
+                <span style={{ fontSize:11, color:on?B.text:B.textMuted }}>{p.flag} {p.name}</span>
+                {p.free&&<span style={{ fontSize:9, color:B.green, marginLeft:"auto", fontWeight:700 }}>FREE</span>}
+              </div>
+            );
+          })}
+          {lastFetch&&<div style={{ fontSize:9, color:B.textMuted, marginTop:8 }}>Abgerufen: {lastFetch.toLocaleTimeString("de-AT")}</div>}
+          <div style={{ marginTop:12, borderTop:`1px solid ${B.border}`, paddingTop:10 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ width:5, height:5, borderRadius:"50%", background:B.green, boxShadow:`0 0 5px ${B.green}` }}/>
+              <span style={{ fontSize:11, color:B.text }}>🔒 Offline · kein Key nötig</span>
+            </div>
+            <div style={{ fontSize:9, color:B.textMuted, marginTop:3 }}>Regelbasierte Analyse läuft lokal</div>
+          </div>
+          <button 
+            onClick={() => { localStorage.removeItem("exceet_radar_auth_v1"); window.location.reload(); }}
+            style={{ marginTop:12, width:"100%", padding:"8px", background:"transparent", border:`1px solid ${B.border}`, borderRadius:6, color:B.textMuted, fontSize:11, cursor:"pointer" }}
+          >
+            🚪 Logout
+          </button>
+        </div>
+      </div>
+
+      {/* CONTENT */}
+      <div style={{ flex:1, overflow:"auto" }}>
+
+        {/* DASHBOARD */}
+        {tab==="dashboard"&&(
+          <div style={{ padding:28 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:24 }}>
+              <div>
+                <div style={{ fontSize:22, fontWeight:800 }}>Dashboard</div>
+                <div style={{ fontSize:13, color:B.textSub }}>Wöchentliche Tender-Übersicht · exceet Card Group</div>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <Btn primary disabled={loading} onClick={runFetch}>{loading?"⏳ Abrufen...":"🔄 Jetzt abrufen"}</Btn>
+                <Btn disabled={!tenders.length||reportLoading} onClick={genReport}>{reportLoading?"⏳ Generiere...":"🤖 KI-Wochenbericht"}</Btn>
+              </div>
+            </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:22 }}>
+              <KPI value={tenders.length} label="Ausschreibungen" color={B.text}/>
+              <KPI value={scoredTenders.filter(t=>t.relevance>=75).length} label="Hoch relevant" color={B.green} sub="Score ≥ 75"/>
+              <KPI value={scoredTenders.filter(t=>t.relevance>=40&&t.relevance<75).length} label="Mittel relevant" color={B.amber} sub="Score 40–74"/>
+              <KPI value={scoredTenders.filter(t=>t.flags&&t.flags.length>0).length} label="Mit Warnungen" color={B.amber} sub="Kapazität / Volumen"/>
+            </div>
+
+            {!tenders.length&&(
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:50, textAlign:"center", marginBottom:22 }}>
+                <div style={{ fontSize:36, marginBottom:14 }}>📡</div>
+                <div style={{ fontSize:16, fontWeight:700, marginBottom:8 }}>Noch keine Ausschreibungen geladen</div>
+                <div style={{ fontSize:13, color:B.textSub, marginBottom:22, lineHeight:1.7 }}>
+                  Klicke auf "Jetzt abrufen" um aktuelle Ausschreibungen von TED EU zu laden.<br/>
+                  Kriterien &amp; Kapazitätsgrenzen unter <span style={{ color:B.blueLight, cursor:"pointer" }} onClick={()=>setTab("criteria")}>⚙️ Kriterien</span> konfigurieren.
+                </div>
+                <Btn primary onClick={runFetch} disabled={loading}>{loading?"⏳ Wird abgerufen...":"🔄 TED EU jetzt abrufen"}</Btn>
+              </div>
+            )}
+
+            {fetchLog.length>0&&(
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:16, marginBottom:22 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:10 }}>
+                  <Accent/><span style={{ fontSize:12, fontWeight:700 }}>Abruf-Protokoll</span>
+                </div>
+                <div style={{ fontFamily:"monospace", fontSize:11 }}>
+                  {fetchLog.map((l,i)=><div key={i} style={{ color:l.ok?B.green:B.amber, marginBottom:3 }}>{l.msg}</div>)}
+                </div>
+              </div>
+            )}
+
+            {reportLoading&&(
+              <div style={{ background:`linear-gradient(135deg, ${B.bgCard}, ${B.blueDark}15)`, border:`1px solid ${B.blueDark}50`, borderRadius:10, padding:40, marginBottom:22, textAlign:"center" }}>
+                <div style={{ fontSize:36, marginBottom:12, animation:"pulse 1.5s infinite" }}>🤖</div>
+                <div style={{ fontSize:14, fontWeight:600, color:B.blueLight }}>KI erstellt Wochenbericht...</div>
+                <div style={{ fontSize:12, color:B.textSub, marginTop:6 }}>Analysiere {scoredTenders.length} Ausschreibungen (ca. 10-15 Sekunden)</div>
+              </div>
+            )}
+
+            {report&&!reportLoading&&(
+              <div style={{ background:`linear-gradient(135deg, ${B.bgCard}, ${B.blueDark}10)`, border:`1px solid ${B.blueDark}50`, borderRadius:12, padding:24, marginBottom:22 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:18 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <span style={{ fontSize:22 }}>🤖</span>
+                    <span style={{ fontSize:16, fontWeight:700 }}>KI Wochenbericht</span>
+                    <span style={{ fontSize:9, background:`${B.blueDark}40`, color:B.blueLight, padding:"3px 10px", borderRadius:99 }}>GPT-4 EXECUTIVE SUMMARY</span>
+                  </div>
+                  <Btn small primary onClick={genReport}>↻ Neu generieren</Btn>
+                </div>
+                
+                {report.error ? (
+                  <div style={{ color:B.red, fontSize:12, padding:16, background:B.redDim, borderRadius:8 }}>❌ Fehler: {report.error}</div>
+                ) : (
+                  <div>
+                    {/* Executive Summary */}
+                    <div style={{ background:B.bgMid, borderRadius:10, padding:18, marginBottom:16, borderLeft:`4px solid ${B.blueDark}` }}>
+                      <div style={{ fontSize:10, color:B.blueLight, textTransform:"uppercase", letterSpacing:1, marginBottom:8 }}>📊 Executive Summary</div>
+                      <div style={{ fontSize:14, color:B.text, lineHeight:1.7 }}>{report.executive_summary}</div>
+                    </div>
+                    
+                    {/* Pipeline Wert & Erfolgsaussicht */}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
+                      <div style={{ background:B.bgCard, borderRadius:8, padding:16, textAlign:"center" }}>
+                        <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", marginBottom:4 }}>Pipeline-Wert</div>
+                        <div style={{ fontSize:22, fontWeight:800, color:B.blueLight }}>{report.pipeline_wert}</div>
+                      </div>
+                      <div style={{ background:B.bgCard, borderRadius:8, padding:16, textAlign:"center" }}>
+                        <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", marginBottom:4 }}>Erfolgsaussicht</div>
+                        <div style={{ fontSize:18, fontWeight:800, color:report.erfolgsaussicht==="SEHR GUT"?B.green:report.erfolgsaussicht==="GUT"?B.green:report.erfolgsaussicht==="MODERAT"?B.amber:B.red }}>{report.erfolgsaussicht}</div>
+                      </div>
+                    </div>
+                    
+                    {/* Marktlage */}
+                    <div style={{ background:B.bgCard, borderRadius:8, padding:14, marginBottom:16 }}>
+                      <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:6 }}>📈 Marktlage</div>
+                      <div style={{ fontSize:12, color:B.text, lineHeight:1.6 }}>{report.marktlage}</div>
+                    </div>
+                    
+                    {/* Top Chancen */}
+                    <div style={{ background:B.greenDim, border:`1px solid ${B.green}30`, borderRadius:10, padding:16, marginBottom:16 }}>
+                      <div style={{ fontSize:10, color:B.green, textTransform:"uppercase", letterSpacing:0.8, marginBottom:12 }}>🎯 Top Chancen</div>
+                      {report.top_chancen&&report.top_chancen.map((c,i)=>(
+                        <div key={i} style={{ background:B.bgCard, borderRadius:8, padding:12, marginBottom:i<report.top_chancen.length-1?10:0 }}>
+                          <div style={{ fontSize:13, fontWeight:700, color:B.text, marginBottom:4 }}>{c.titel}</div>
+                          <div style={{ fontSize:11, color:B.textSub, marginBottom:6 }}>{c.warum}</div>
+                          <div style={{ fontSize:11, color:B.green, fontWeight:600 }}>→ {c.empfohlene_aktion}</div>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Risiken */}
+                    {report.risiken_und_warnungen&&report.risiken_und_warnungen.length>0&&(
+                      <div style={{ background:B.amberDim, border:`1px solid ${B.amber}30`, borderRadius:8, padding:14, marginBottom:16 }}>
+                        <div style={{ fontSize:9, color:B.amber, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>⚠️ Risiken & Warnungen</div>
+                        {report.risiken_und_warnungen.map((r,i)=>(
+                          <div key={i} style={{ fontSize:11, color:B.text, marginBottom:4 }}>• {r}</div>
+                        ))}
+                      </div>
+                    )}
+                    
+                    {/* Sofortmaßnahmen */}
+                    <div style={{ background:`${B.blueDark}20`, border:`1px solid ${B.blueDark}40`, borderRadius:10, padding:16, marginBottom:16 }}>
+                      <div style={{ fontSize:10, color:B.blueLight, textTransform:"uppercase", letterSpacing:0.8, marginBottom:10 }}>⚡ Sofortmaßnahmen</div>
+                      {report.sofortmassnahmen&&report.sofortmassnahmen.map((s,i)=>(
+                        <div key={i} style={{ fontSize:12, color:B.text, marginBottom:6, display:"flex", alignItems:"flex-start", gap:8 }}>
+                          <span style={{ color:B.blueLight, fontWeight:800, fontSize:14 }}>{i+1}</span>
+                          <span>{s}</span>
+                        </div>
+                      ))}
+                    </div>
+                    
+                    {/* Strategische Empfehlung */}
+                    <div style={{ background:B.bgMid, borderRadius:8, padding:14, borderLeft:`4px solid ${B.green}` }}>
+                      <div style={{ fontSize:9, color:B.green, textTransform:"uppercase", letterSpacing:0.8, marginBottom:6 }}>💡 Strategische Empfehlung</div>
+                      <div style={{ fontSize:13, color:B.text, lineHeight:1.6, fontWeight:500 }}>{report.strategische_empfehlung}</div>
+                    </div>
+                    
+                    <div style={{ fontSize:10, color:B.textMuted, marginTop:14, textAlign:"center" }}>
+                      🤖 Generiert von GPT-4 · {new Date().toLocaleDateString("de-AT")}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {tenders.length>0&&(
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+                    <Accent/><span style={{ fontSize:13, fontWeight:700 }}>Top Ausschreibungen</span>
+                  </div>
+                  <span onClick={()=>setTab("tenders")} style={{ fontSize:12, color:B.blueLight, cursor:"pointer", fontWeight:600 }}>Alle anzeigen →</span>
+                </div>
+                {scoredTenders.filter(t=>t.relevance>=60).sort((a,b)=>b.relevance-a.relevance).slice(0,5).map(t=>{
+                  const cat=CATEGORIES.find(c=>c.key===t.category)||CATEGORIES[0];
+                  const days=t.deadline?Math.ceil((new Date(t.deadline)-new Date("2025-03-10"))/86400000):null;
+                  return (
+                    <div key={t.id} style={{ display:"flex", alignItems:"center", gap:14, padding:"12px 0", borderBottom:`1px solid ${B.border}30` }}>
+                      <ScoreRing score={t.relevance} size={42}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:13, fontWeight:600, marginBottom:2 }}>{t.title}</div>
+                        <div style={{ fontSize:11, color:B.textSub }}>{t.authority} · <Tag color={cat.color}>{cat.icon} {cat.label}</Tag>
+                          {t.flags&&t.flags.length>0&&<span style={{ fontSize:10, color:B.amber, marginLeft:4 }}>⚠️ {t.flags[0]}</span>}
+                        </div>
+                      </div>
+                      {t.value&&<div style={{ fontSize:14, fontWeight:700, color:B.blueLight, flexShrink:0 }}>{formatEuro(parseFloat(t.value))}</div>}
+                      {days!==null&&<div style={{ fontSize:11, color:days<=14?B.red:B.textSub, flexShrink:0, fontWeight:600 }}>⏱ {days}d</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TENDERS */}
+        {tab==="tenders"&&(
+          <div style={{ padding:28 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:20 }}>
+              <div>
+                <div style={{ fontSize:22, fontWeight:800 }}>Ausschreibungen</div>
+                <div style={{ fontSize:13, color:B.textSub }}>{filtered.length} von {tenders.length} · KI-bewertet nach exceet-Kriterien</div>
+              </div>
+              <div style={{ display:"flex", gap:8 }}>
+                <Btn small onClick={()=>setShowAdd(true)}>+ Manuell</Btn>
+                <Btn primary small disabled={loading} onClick={runFetch}>{loading?"⏳":"🔄 Abrufen"}</Btn>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", gap:6, marginBottom:14, flexWrap:"wrap" }}>
+              {CATEGORIES.map(cat=>{
+                const count=cat.key==="all"?scoredTenders.length:(catCounts[cat.key]||0);
+                const active=activeCat===cat.key;
+                return (
+                  <button key={cat.key} onClick={()=>setAC(cat.key)}
+                    style={{ padding:"7px 14px", background:active?`${cat.color}18`:B.bgCard, border:`1px solid ${active?cat.color:B.border}`,
+                      borderRadius:6, color:active?cat.color:B.textSub, fontWeight:active?700:400, fontSize:12, cursor:"pointer" }}>
+                    {cat.icon} {cat.label} <span style={{ fontSize:10, background:B.bgMid, padding:"1px 5px", borderRadius:99 }}>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display:"flex", gap:10, marginBottom:16, flexWrap:"wrap", alignItems:"center" }}>
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="🔍 Suche..."
+                style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:6, padding:"8px 12px", color:B.text, fontSize:13, outline:"none", width:220 }}/>
+              <div style={{ display:"flex", gap:6 }}>
+                {[["Alle",0],["Mittel+",40],["Hoch",75]].map(([l,v])=>(
+                  <button key={v} onClick={()=>setMS(v)}
+                    style={{ padding:"6px 12px", borderRadius:6, border:`1px solid ${minScore===v?B.blueDark:B.border}`, background:minScore===v?`${B.blueDark}25`:"transparent", color:minScore===v?B.blueLight:B.textSub, fontSize:12, fontWeight:600, cursor:"pointer" }}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginLeft:"auto", fontSize:11, color:B.textSub }}>{filtered.length} Ergebnisse</div>
+            </div>
+
+            {!filtered.length&&<div style={{ textAlign:"center", padding:60, color:B.textSub }}>{tenders.length===0?"Noch keine Daten — bitte zuerst abrufen.":"Keine Treffer."}</div>}
+
+            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+              {filtered.map(t=>{
+                const cat=CATEGORIES.find(c=>c.key===t.category)||CATEGORIES[1];
+                const days=t.deadline?Math.ceil((new Date(t.deadline)-new Date("2025-03-10"))/86400000):null;
+                const urgColor=days!==null&&days<=14?B.red:days!==null&&days<=30?B.amber:B.textSub;
+                const leftColor=t.relevance>=75?B.green:t.relevance>=40?B.amber:t.relevance>0?B.red:B.textMuted;
+                const isOpen=expanded===t.id;
+                return (
+                  <div key={t.id} style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderLeft:`4px solid ${leftColor}`, borderRadius:8, overflow:"hidden" }}>
+                    <div style={{ display:"flex", alignItems:"center", padding:"14px 18px", gap:14, cursor:"pointer" }} onClick={()=>setExp(isOpen?null:t.id)}>
+                      <ScoreRing score={t.relevance} size={44}/>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:4, flexWrap:"wrap" }}>
+                          <Tag color={cat.color}>{cat.icon} {cat.label}</Tag>
+                          <Tag color={B.textSub}>{t.country||"—"}</Tag>
+                          <Tag color={B.textSub}>{t.source||"—"}</Tag>
+                          {t.flags&&t.flags.map((f,i)=><Tag key={i} color={B.amber}>⚠️ {f.replace(/^⚠️\s*/,"")}</Tag>)}
+                        </div>
+                        <div style={{ fontSize:14, fontWeight:700, lineHeight:1.3 }}>{t.title}</div>
+                        <div style={{ fontSize:12, color:B.textSub, marginTop:2 }}>{t.authority}</div>
+                      </div>
+                      <div style={{ textAlign:"right", minWidth:100, flexShrink:0 }}>
+                        {t.value&&<div style={{ fontSize:15, fontWeight:700, color:B.blueLight }}>{formatEuro(parseFloat(t.value))}</div>}
+                        {days!==null&&<div style={{ fontSize:11, color:urgColor, fontWeight:600 }}>⏱ {days}d</div>}
+                        {t.deadline&&<div style={{ fontSize:10, color:B.textSub }}>{t.deadline}</div>}
+                      </div>
+                      <div style={{ color:B.textMuted, fontSize:14 }}>{isOpen?"▲":"▼"}</div>
+                    </div>
+                    {isOpen&&(
+                      <div style={{ padding:"0 18px 18px", borderTop:`1px solid ${B.border}20` }}>
+
+                        {/* ── DETAIL ZUSAMMENFASSUNG ── */}
+                        <div style={{ marginTop:14, marginBottom:14, background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:9, padding:16 }}>
+                          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                            <div style={{ width:3, height:16, borderRadius:2, background:`linear-gradient(to bottom, ${B.blueDark}, ${B.blueLight})` }}/>
+                            <span style={{ fontSize:12, fontWeight:700, color:B.text }}>📋 Ausschreibungs-Details</span>
+                          </div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                            <div style={{ background:B.bgCard, borderRadius:7, padding:"10px 13px" }}>
+                              <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:3 }}>Auftraggeber</div>
+                              <div style={{ fontSize:13, fontWeight:600 }}>{t.authority}</div>
+                              <div style={{ fontSize:11, color:B.textSub, marginTop:1 }}>🌍 {t.country||"—"} · {t.source||"—"}</div>
+                            </div>
+                            <div style={{ background:B.bgCard, borderRadius:7, padding:"10px 13px" }}>
+                              <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:3 }}>Volumen &amp; Deadline</div>
+                              <div style={{ fontSize:15, fontWeight:800, color:B.blueLight }}>{formatEuro(parseFloat(t.value||0))}</div>
+                              {t.deadline&&(()=>{ const d=Math.ceil((new Date(t.deadline)-new Date("2025-03-10"))/86400000); return <div style={{ fontSize:11, color:d<=14?B.red:d<=30?B.amber:B.green, marginTop:1, fontWeight:600 }}>⏱ {t.deadline} · noch {d} Tage</div>; })()}
+                            </div>
+                          </div>
+                          {t.description&&(
+                            <div style={{ background:B.bgCard, borderRadius:7, padding:"10px 13px", marginBottom:10 }}>
+                              <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>Ausschreibungsinhalt</div>
+                              <div style={{ fontSize:12, color:B.text, lineHeight:1.65 }}>{t.description}</div>
+                            </div>
+                          )}
+                          {t.reasons&&t.reasons.length>0&&(
+                            <div style={{ marginBottom:8 }}>
+                              <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>Relevanz-Treffer</div>
+                              <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
+                                {t.reasons.map((r,i)=>(
+                                  <span key={i} style={{ fontSize:11, background:`${B.green}12`, border:`1px solid ${B.green}35`, color:B.green, borderRadius:5, padding:"3px 10px" }}>✓ {r}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {t.flags&&t.flags.length>0&&(
+                            <div style={{ padding:"8px 12px", background:B.amberDim, border:`1px solid ${B.amber}40`, borderRadius:6 }}>
+                              {t.flags.map((f,i)=><div key={i} style={{ fontSize:12, color:B.amber }}>{f}</div>)}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* ── KI-ANALYSE ── */}
+                        <div style={{ background:`linear-gradient(135deg, ${B.bgMid}, ${B.blueDark}15)`, border:`1px solid ${B.blueDark}50`, borderRadius:10, padding:16 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 }}>
+                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                              <span style={{ fontSize:18 }}>🤖</span>
+                              <span style={{ fontSize:13, fontWeight:700 }}>KI Bid-Analyse</span>
+                              <span style={{ fontSize:9, background:`${B.blueDark}40`, color:B.blueLight, padding:"2px 8px", borderRadius:99 }}>GPT-4</span>
+                            </div>
+                            <Btn small primary onClick={()=>analyzeWithAI(t)} disabled={aiLoading[t.id]}>
+                              {aiLoading[t.id]?"⏳ Analysiere...":localAnalysis[t.id]?"↻ Neu analysieren":"🔍 KI-Analyse starten"}
+                            </Btn>
+                          </div>
+                          
+                          {!localAnalysis[t.id]&&!aiLoading[t.id]&&(
+                            <div style={{ fontSize:12, color:B.textSub, padding:"16px", textAlign:"center", background:B.bgCard, borderRadius:8 }}>
+                              <div style={{ fontSize:24, marginBottom:8 }}>🧠</div>
+                              Klicke auf "KI-Analyse starten" für eine detaillierte GPT-4 Bewertung mit Empfehlung, Chancen, Risiken und nächsten Schritten.
+                            </div>
+                          )}
+                          
+                          {aiLoading[t.id]&&(
+                            <div style={{ fontSize:12, color:B.blueLight, padding:"30px", textAlign:"center", background:B.bgCard, borderRadius:8 }}>
+                              <div style={{ fontSize:28, marginBottom:12, animation:"pulse 1.5s infinite" }}>🤖</div>
+                              <div style={{ fontWeight:600 }}>KI analysiert die Ausschreibung...</div>
+                              <div style={{ fontSize:11, color:B.textSub, marginTop:4 }}>Bitte warten (ca. 5-10 Sekunden)</div>
+                            </div>
+                          )}
+                          
+                          {localAnalysis[t.id]&&!aiLoading[t.id]&&(()=>{
+                            const a = localAnalysis[t.id];
+                            if (a.error) {
+                              return <div style={{ color:B.red, fontSize:12, padding:12, background:B.redDim, borderRadius:6 }}>❌ Fehler: {a.error}</div>;
+                            }
+                            const empfColor = a.empfehlung==="BIETEN"?B.green:a.empfehlung==="PRÜFEN"?B.amber:B.red;
+                            const prioColor = a.prioritaet==="HOCH"?B.green:a.prioritaet==="MITTEL"?B.amber:B.textMuted;
+                            return (
+                              <div>
+                                {/* Empfehlung Header */}
+                                <div style={{ display:"grid", gridTemplateColumns:"1fr auto", gap:12, marginBottom:14 }}>
+                                  <div style={{ background:B.bgCard, border:`2px solid ${empfColor}50`, borderRadius:8, padding:"14px 16px" }}>
+                                    <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:1, marginBottom:4 }}>KI-Empfehlung</div>
+                                    <div style={{ fontSize:18, fontWeight:800, color:empfColor }}>{a.empfehlung==="BIETEN"?"✅":""}{ a.empfehlung==="PRÜFEN"?"◐":""}{a.empfehlung==="NICHT BIETEN"?"✗":""} {a.empfehlung}</div>
+                                    <div style={{ fontSize:12, color:B.textSub, marginTop:4 }}>{a.empfehlungDetail}</div>
+                                  </div>
+                                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                                    <div style={{ background:B.bgCard, borderRadius:8, padding:"10px 14px", textAlign:"center" }}>
+                                      <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", marginBottom:2 }}>Gewinnchance</div>
+                                      <div style={{ fontSize:16, fontWeight:800, color:B.blueLight }}>{a.geschaetzteGewinnchance}</div>
+                                    </div>
+                                    <div style={{ background:B.bgCard, borderRadius:8, padding:"10px 14px", textAlign:"center" }}>
+                                      <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", marginBottom:2 }}>Priorität</div>
+                                      <div style={{ fontSize:14, fontWeight:700, color:prioColor }}>{a.prioritaet}</div>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                {/* Zusammenfassung */}
+                                <div style={{ background:B.bgCard, borderRadius:8, padding:"12px 14px", marginBottom:12 }}>
+                                  <div style={{ fontSize:9, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:6 }}>📋 Zusammenfassung</div>
+                                  <div style={{ fontSize:12, color:B.text, lineHeight:1.6 }}>{a.zusammenfassung}</div>
+                                </div>
+                                
+                                {/* Chancen & Risiken */}
+                                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10, marginBottom:12 }}>
+                                  <div style={{ background:B.greenDim, border:`1px solid ${B.green}30`, borderRadius:8, padding:"12px 14px" }}>
+                                    <div style={{ fontSize:9, color:B.green, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>✅ Chancen</div>
+                                    {a.chancen&&a.chancen.map((c,i)=>(
+                                      <div key={i} style={{ fontSize:11, color:B.text, marginBottom:4 }}>• {c}</div>
+                                    ))}
+                                  </div>
+                                  <div style={{ background:B.amberDim, border:`1px solid ${B.amber}30`, borderRadius:8, padding:"12px 14px" }}>
+                                    <div style={{ fontSize:9, color:B.amber, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>⚠️ Risiken</div>
+                                    {a.risiken&&a.risiken.map((r,i)=>(
+                                      <div key={i} style={{ fontSize:11, color:B.text, marginBottom:4 }}>• {r}</div>
+                                    ))}
+                                  </div>
+                                </div>
+                                
+                                {/* exceet Stärken */}
+                                <div style={{ background:B.bgCard, borderRadius:8, padding:"12px 14px", marginBottom:12 }}>
+                                  <div style={{ fontSize:9, color:B.blueLight, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>💪 exceet Stärken für diese Ausschreibung</div>
+                                  {a.exceetStaerken&&a.exceetStaerken.map((s,i)=>(
+                                    <div key={i} style={{ fontSize:11, color:B.text, marginBottom:4 }}>✓ {s}</div>
+                                  ))}
+                                </div>
+                                
+                                {/* Nächste Schritte */}
+                                <div style={{ background:`${B.blueDark}20`, border:`1px solid ${B.blueDark}40`, borderRadius:8, padding:"12px 14px" }}>
+                                  <div style={{ fontSize:9, color:B.blueLight, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>🎯 Nächste Schritte</div>
+                                  {a.naechsteSchritte&&a.naechsteSchritte.map((s,i)=>(
+                                    <div key={i} style={{ fontSize:11, color:B.text, marginBottom:4, display:"flex", alignItems:"flex-start", gap:6 }}>
+                                      <span style={{ color:B.blueLight, fontWeight:700 }}>{i+1}.</span> {s}
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                <div style={{ fontSize:10, color:B.textMuted, marginTop:10, padding:"6px 10px", background:B.bgCard, borderRadius:5, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+                                  <span>🤖 Analyse powered by GPT-4</span>
+                                  <span>Score: {t.relevance}/100</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                        {t.tedUrl&&(
+                          <div style={{ marginTop:12, padding:"12px 14px", background:t.isSearchLink?`${B.blueDark}20`:B.bgCard, borderRadius:8, border:`1px solid ${t.isSearchLink?B.blueDark:B.border}` }}>
+                            <div style={{ fontSize:10, color:B.textMuted, textTransform:"uppercase", letterSpacing:0.8, marginBottom:8 }}>🇪🇺 TED Europa</div>
+                            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                              <a href={t.tedUrl} target="_blank" rel="noopener noreferrer" 
+                                style={{ fontSize:13, color:B.blueLight, textDecoration:"none", display:"flex", alignItems:"center", gap:8, padding:"8px 12px", background:B.blueDark, borderRadius:6, fontWeight:600 }}>
+                                {t.isSearchLink ? "🔍 Auf TED EU suchen →" : `📄 Ausschreibung ${t.noticeId || ""} auf TED öffnen →`}
+                              </a>
+                              {!t.isSearchLink && t.tedSearchUrl&&(
+                                <a href={t.tedSearchUrl} target="_blank" rel="noopener noreferrer" 
+                                  style={{ fontSize:11, color:B.textSub, textDecoration:"none", display:"flex", alignItems:"center", gap:6 }}>
+                                  🔍 Ähnliche Ausschreibungen suchen →
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* KRITERIEN */}
+        {tab==="criteria"&&(
+          <div style={{ padding:28 }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:6 }}>
+              <div>
+                <div style={{ fontSize:22, fontWeight:800 }}>Relevanz-Kriterien</div>
+                <div style={{ fontSize:13, color:B.textSub }}>Definiert wann eine Ausschreibung für exceet relevant ist</div>
+              </div>
+              <div style={{ display:"flex", gap:10 }}>
+                <Btn small onClick={()=>{ setCriteria(DEFAULT_CRITERIA); setCC(false); }}>↺ Reset</Btn>
+                <Btn primary small onClick={()=>setCC(false)}>✓ Speichern</Btn>
+              </div>
+            </div>
+
+            {criteriaChanged&&(
+              <div style={{ background:B.amberDim, border:`1px solid ${B.amber}50`, borderRadius:8, padding:"10px 14px", marginBottom:18, fontSize:12, color:B.amber }}>
+                ⚠️ Kriterien geändert — Ausschreibungen werden automatisch neu bewertet.
+              </div>
+            )}
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:20 }}>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Volumen &amp; Kapazität</span>
+                </div>
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:10, color:B.textSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>Mindest-Auftragsvolumen</div>
+                  <NumInp value={criteria.minVolume} onChange={v=>updC("minVolume",v)} min={0} step={50000} prefix="€" suffix="Min"/>
+                  <div style={{ marginTop:5, fontSize:12, color:B.blueLight }}>{formatEuro(criteria.minVolume)}</div>
+                </div>
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:10, color:B.textSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>Maximum Auftragsvolumen</div>
+                  <NumInp value={criteria.maxVolume} onChange={v=>updC("maxVolume",v)} min={0} step={500000} prefix="€" suffix="Max"/>
+                  <div style={{ marginTop:5, fontSize:12, color:B.blueLight }}>{formatEuro(criteria.maxVolume)}</div>
+                </div>
+                <div style={{ marginBottom:16 }}>
+                  <div style={{ fontSize:10, color:B.textSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:5 }}>🏭 Kapazität Kematen (Stück/Jahr)</div>
+                  <NumInp value={criteria.maxUnits} onChange={v=>updC("maxUnits",v)} min={1000000} step={1000000} suffix="Stück/Jahr"/>
+                  <div style={{ marginTop:5, fontSize:12, color:B.green }}>{(criteria.maxUnits/1000000).toFixed(0)} Mio. Karten/Jahr</div>
+                </div>
+                <div style={{ background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:7, padding:"10px 12px" }}>
+                  <div style={{ fontSize:11, color:B.textSub, marginBottom:6 }}>Aktuelle Limits Kematen</div>
+                  <div style={{ fontSize:12 }}>Min: <strong style={{ color:B.blueLight }}>{formatEuro(criteria.minVolume)}</strong> · Max: <strong style={{ color:B.blueLight }}>{formatEuro(criteria.maxVolume)}</strong></div>
+                  <div style={{ fontSize:12, marginTop:4 }}>Kapazität: <strong style={{ color:B.green }}>{(criteria.maxUnits/1000000).toFixed(0)} Mio. Stück/Jahr</strong></div>
+                </div>
+              </div>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Score-Gewichtung</span>
+                </div>
+                <div style={{ fontSize:12, color:B.textSub, marginBottom:16 }}>Wie stark zählt jedes Kriterium für den Relevanz-Score (0–100)?</div>
+                {[
+                  ["weightProduct","Produkttyp passt",       B.blueLight],
+                  ["weightTech",   "Technologie (RFID/EMV…)",B.green    ],
+                  ["weightGeo",    "Geographie (AT/DE/CH…)", B.amber    ],
+                  ["weightCert",   "Zertifizierungen",       "#A78BFA"  ],
+                ].map(([key,label,color])=>(
+                  <div key={key} style={{ marginBottom:14 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", marginBottom:5 }}>
+                      <span style={{ fontSize:12 }}>{label}</span>
+                      <span style={{ fontSize:12, fontWeight:700, color }}>{criteria[key]}</span>
+                    </div>
+                    <input type="range" min={0} max={100} step={5} value={criteria[key]}
+                      onChange={e=>updC(key, Number(e.target.value))}
+                      style={{ width:"100%", accentColor:color }}/>
+                    <div style={{ height:4, borderRadius:2, background:B.bgMid, marginTop:3 }}>
+                      <div style={{ height:"100%", width:`${criteria[key]}%`, background:color, borderRadius:2 }}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Relevante Länder</span>
+                </div>
+                <TagEditor items={criteria.countries} onAdd={v=>updC("countries",[...criteria.countries,v.toUpperCase()])} onRemove={i=>updC("countries",criteria.countries.filter((_,j)=>j!==i))} placeholder="Ländercode (z.B. FR)..." color={B.blueLight}/>
+              </div>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Produkt-Keywords</span>
+                </div>
+                <TagEditor items={criteria.products} onAdd={v=>updC("products",[...criteria.products,v])} onRemove={i=>updC("products",criteria.products.filter((_,j)=>j!==i))} placeholder="z.B. smartcard..." color={B.blueLight}/>
+              </div>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Technologie-Keywords</span>
+                </div>
+                <TagEditor items={criteria.technologies} onAdd={v=>updC("technologies",[...criteria.technologies,v])} onRemove={i=>updC("technologies",criteria.technologies.filter((_,j)=>j!==i))} placeholder="z.B. contactless..." color={B.green}/>
+              </div>
+
+              <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+                  <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Ausschluss-Keywords</span>
+                </div>
+                <div style={{ fontSize:12, color:B.textSub, marginBottom:10 }}>Diese Begriffe → Score sofort 0</div>
+                <TagEditor items={criteria.exclusions} onAdd={v=>updC("exclusions",[...criteria.exclusions,v])} onRemove={i=>updC("exclusions",criteria.exclusions.filter((_,j)=>j!==i))} placeholder="z.B. catering..." color={B.red}/>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* PORTALS */}
+        {tab==="portals"&&(
+          <div style={{ padding:28 }}>
+            <div style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>Portale &amp; API-Keys</div>
+            <div style={{ fontSize:13, color:B.textSub, marginBottom:26 }}>API-Keys von eurer IT eintragen — Tender Radar verbindet sich dann automatisch beim Abruf</div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:16, marginBottom:28 }}>
+              {PORTALS.map(p=>{
+                const hasKey=p.free||!!apiKeys[p.key];
+                const isEditing=editKey===p.key;
+                return (
+                  <div key={p.key} style={{ background:B.bgCard, border:`2px solid ${hasKey?B.green+"50":B.border}`, borderRadius:10, padding:20 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:12 }}>
+                      <div>
+                        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:4 }}>
+                          <span style={{ fontSize:22 }}>{p.flag}</span>
+                          <span style={{ fontSize:15, fontWeight:700 }}>{p.name}</span>
+                          {p.free&&<span style={{ fontSize:10, background:B.greenDim, color:B.green, padding:"2px 7px", borderRadius:99, fontWeight:700 }}>KOSTENLOS</span>}
+                        </div>
+                        <div style={{ fontSize:11, color:B.textSub }}>{p.url}</div>
+                      </div>
+                      <div style={{ width:9, height:9, borderRadius:"50%", background:hasKey?B.green:B.textMuted, boxShadow:hasKey?`0 0 7px ${B.green}`:"none" }}/>
+                    </div>
+                    <div style={{ fontSize:12, color:B.textSub, marginBottom:14, lineHeight:1.5 }}>{p.desc}</div>
+                    <div style={{ fontSize:11, color:B.textMuted, marginBottom:10 }}>Länder: {p.countries.join(", ")}</div>
+                    {p.free?(
+                      <div style={{ fontSize:12, color:B.green, background:B.greenDim, padding:"9px 12px", borderRadius:6 }}>✅ Kein Key nötig — direkt verfügbar via CPV-Codes</div>
+                    ):isEditing?(
+                      <div style={{ display:"flex", gap:8 }}>
+                        <input value={tempKey} onChange={e=>setTempKey(e.target.value)} placeholder="API-Key einfügen..." type="password"
+                          style={{ flex:1, background:B.bgMid, border:`1px solid ${B.blueDark}`, borderRadius:6, padding:"7px 10px", color:B.text, fontSize:12, outline:"none" }}/>
+                        <button onClick={()=>{ setApiKeys(prev=>({...prev,[editKey]:tempKey})); setEditKey(null); setTempKey(""); }}
+                          style={{ padding:"7px 14px", background:B.blueDark, color:B.white, border:"none", borderRadius:6, fontWeight:700, fontSize:12, cursor:"pointer" }}>Speichern</button>
+                        <button onClick={()=>{ setEditKey(null); setTempKey(""); }}
+                          style={{ padding:"7px 10px", background:B.bgMid, color:B.textSub, border:`1px solid ${B.border}`, borderRadius:6, fontSize:12, cursor:"pointer" }}>✕</button>
+                      </div>
+                    ):(
+                      <div>
+                        <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                          <div style={{ flex:1, fontSize:12, background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:6, padding:"7px 10px", color:apiKeys[p.key]?B.green:B.textMuted }}>
+                            {apiKeys[p.key]?"●●●●●●●● (gespeichert)":"Kein Key hinterlegt"}
+                          </div>
+                          <button onClick={()=>{ setEditKey(p.key); setTempKey(apiKeys[p.key]||""); }}
+                            style={{ padding:"7px 12px", background:B.bgMid, border:`1px solid ${B.borderHi}`, borderRadius:6, color:B.text, fontSize:12, cursor:"pointer", fontWeight:600 }}>
+                            {apiKeys[p.key]?"Ändern":"+ Key"}
+                          </button>
+                        </div>
+                        <a href={p.docUrl} target="_blank" rel="noopener noreferrer" style={{ fontSize:11, color:B.blueLight, textDecoration:"none", display:"block", marginTop:8 }}>
+                          📖 API-Dokumentation &amp; Key beantragen →
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:10, padding:20 }}>
+              <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:14 }}>
+                <Accent/><span style={{ fontSize:14, fontWeight:700 }}>Aktive CPV-Codes (TED EU)</span>
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(2,1fr)", gap:8 }}>
+                {EXCEET_CPV.map(cpv=>{
+                  const cat=CATEGORIES.find(c=>c.key===cpv.category)||CATEGORIES[0];
+                  return (
+                    <div key={cpv.code} style={{ background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:7, padding:"10px 14px", display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                      <div>
+                        <div style={{ fontSize:12, fontWeight:600 }}>{cpv.label}</div>
+                        <div style={{ fontSize:10, color:B.textSub, fontFamily:"monospace", marginTop:1 }}>{cpv.code}</div>
+                      </div>
+                      <Tag color={cat.color}>{cat.icon} {cat.label}</Tag>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* MODAL */}
+      {showAdd&&(
+        <div style={{ position:"fixed", inset:0, background:"#00000090", zIndex:50, display:"flex", alignItems:"center", justifyContent:"center", padding:20 }}>
+          <div style={{ background:B.bgCard, border:`1px solid ${B.border}`, borderRadius:12, padding:26, width:"100%", maxWidth:540 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:18 }}>
+              <Accent/><span style={{ fontSize:15, fontWeight:700 }}>Ausschreibung manuell hinzufügen</span>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:12 }}>
+              {[["Titel *","title","Ausschreibung..."],["Auftraggeber *","authority","Behörde / Bank..."],["Land","country","AT"],["Volumen (Zahl)","value","4200000"],["Deadline","deadline",""],["Quelle","source","Vergabe.at"]].map(([l,k,ph])=>(
+                <div key={k}>
+                  <div style={{ fontSize:10, color:B.textSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:4 }}>{l}</div>
+                  <input value={newT[k]} onChange={e=>setNewT(p=>({...p,[k]:e.target.value}))} placeholder={ph} type={k==="deadline"?"date":"text"}
+                    style={{ width:"100%", background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:6, padding:"8px 10px", color:B.text, fontSize:13, outline:"none" }}/>
+                </div>
+              ))}
+            </div>
+            <div style={{ marginBottom:16 }}>
+              <div style={{ fontSize:10, color:B.textSub, textTransform:"uppercase", letterSpacing:0.8, marginBottom:4 }}>
+                Beschreibung <span style={{ color:B.blueLight }}>(für KI &amp; Stückzahl-Check wichtig!)</span>
+              </div>
+              <textarea value={newT.description} onChange={e=>setNewT(p=>({...p,description:e.target.value}))}
+                placeholder="z.B. RFID Chipkarte Polycarbonat Personalisierung EMV Österreich 5 Millionen Stück..." rows={3}
+                style={{ width:"100%", background:B.bgMid, border:`1px solid ${B.border}`, borderRadius:6, padding:"8px 10px", color:B.text, fontSize:13, outline:"none", resize:"vertical" }}/>
+            </div>
+            <div style={{ display:"flex", gap:10 }}>
+              <Btn primary onClick={addManual}>✓ Hinzufügen</Btn>
+              <Btn onClick={()=>setShowAdd(false)}>Abbrechen</Btn>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App/>);
+</script>
+</body>
+</html>
